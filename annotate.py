@@ -3,14 +3,6 @@ import pandas
 import re
 import csv
 
-sentence_sources = ["narration", "dialogue"]
-sentences_path = {"narration": os.path.join(".", "..", "german_audio_description.csv"),
-                  "dialogue": ""}
-narration = pandas.read_csv(filepath_or_buffer=sentences_path["narration"],
-                            header=None,
-                            names=["t_start", "t_end", "text"])
-
-
 def clean_and_split(sentence):
     """
     Take a sentence of voiceover. Clean up artefacts, special characters, comments etc. Split into lowercase words. Return.
@@ -36,7 +28,7 @@ def clean_and_split(sentence):
     return words
 
 
-def gen_time_tag_dicts(words, t_start, t_end):
+def gen_time_tag_dicts(words, t_start, t_end, method="constant"):
     """
     Given the words in sentence, the start/end times of that sentence, generate time-tagged words
     :param words: a list of words
@@ -47,39 +39,28 @@ def gen_time_tag_dicts(words, t_start, t_end):
     words_dicts = []
     timediff = t_end - t_start
     word_time = timediff / len(words)
-    for i, word in enumerate(words):
+    if method == "constant":
         # idea: each word in a sentence uses the same amount of time, approximately
-        words_dicts.append({"t_start": t_start+i*word_time,
-                            "t_end": t_start+(i+1)*word_time,
-                            "text": word})
+        for i, word in enumerate(words):
+            words_dicts.append({"t_start": t_start+i*word_time,
+                                "t_end": t_start+(i+1)*word_time,
+                                "text": word})
+    elif method == "weighted":
+        # idea: each word word gets assigned a weight, determining the share of time it gets
+        # here the weight is simply the number of characters
+        weights = [len(word) for word in words]
+        total = sum(weights)
+        weight_fractions = [weight / total for weight in weights]
+        time_fractions = [weight_fraction * timediff for weight_fraction in weight_fractions]
+        offset = t_start
+        for i, word in enumerate(words):
+            words_dicts.append({"t_start": offset,
+                                "t_end": offset+time_fractions[i],
+                                "text": word})
+            offset += time_fractions[i]
+    else:
+        raise ValueError("unsupported value for the 'method' argument")
     return words_dicts
-
-########
-# create tagged word list
-#######
-tagged_words = []
-for i in range(narration.shape[0]):
-    row = narration.ix[i]
-    words = clean_and_split(row["text"])
-    words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"])
-    tagged_words.extend(words_dicts)
-
-# for word in tagged_words:
-#     print("{}, {}, {}".format(word["t_start"], word["t_end"], word["text"]))
-
-########
-# write tagged word list to CSV
-########
-fout = "words_tagged.csv"
-with open(fout, "w") as fhandle:
-    writer = csv.writer(fhandle, dialect="excel")
-    for word in tagged_words:
-        writer.writerow([word["t_start"], word["t_end"], word["text"]])
-
-#######
-# write tagged word list to .srt for inspection
-######
-
 
 def time_tag_to_srt_time(seconds):
     """
@@ -120,7 +101,42 @@ def word_list_to_srt(tagged_words):
         out += "\n\n"
     return out
 
+if __name__ == "__main__":
+    ################################################################
+    # setup
+    ################################################################
+    sentence_sources = ["narration", "dialogue"]
+    sentences_path = {"narration": os.path.join(".", "..", "german_audio_description.csv"),
+                  "dialogue": ""}
+    narration = pandas.read_csv(filepath_or_buffer=sentences_path["narration"],
+                            header=None,
+                            names=["t_start", "t_end", "text"])
 
-with open(os.path.join("..", "fgad", "fg_ad_seg0.mkv.srt"), "w") as fout:
-    fout.write(word_list_to_srt(tagged_words))
-    print(word_list_to_srt(tagged_words))
+    ################################################################
+    # create tagged word list
+    ################################################################
+    tagged_words = []
+    for i in range(narration.shape[0]):
+        row = narration.ix[i]
+        words = clean_and_split(row["text"])
+        words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"], method="weighted")
+        tagged_words.extend(words_dicts)
+
+    # for word in tagged_words:
+    #     print("{}, {}, {}".format(word["t_start"], word["t_end"], word["text"]))
+
+    ################################################################
+    # write tagged word list to CSV
+    ################################################################
+    fout = "words_tagged.csv"
+    with open(fout, "w") as fhandle:
+        writer = csv.writer(fhandle, dialect="excel")
+        for word in tagged_words:
+            writer.writerow([word["t_start"], word["t_end"], word["text"]])
+
+    ################################################################
+    # write tagged word list to .srt for inspection
+    ################################################################
+    with open(os.path.join("..", "fgad", "fg_ad_seg0.mkv.srt"), "w") as fout:
+        fout.write(word_list_to_srt(tagged_words))
+        print(word_list_to_srt(tagged_words))
