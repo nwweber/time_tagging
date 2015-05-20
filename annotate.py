@@ -125,6 +125,8 @@ if __name__ == "__main__":
     for ms_time_field in ["t_start", "t_end"]:
         dialogue[ms_time_field] /= 1000
 
+    all_transcriptions = pandas.concat([narration, dialogue])
+    all_transcriptions = all_transcriptions.sort(columns="t_start")
     ################################################################
     # create tagged word list
     ################################################################
