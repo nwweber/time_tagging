@@ -127,6 +127,7 @@ if __name__ == "__main__":
 
     all_transcriptions = pandas.concat([narration, dialogue])
     all_transcriptions = all_transcriptions.sort(columns="t_start")
+
     ################################################################
     # create tagged word list
     ################################################################
