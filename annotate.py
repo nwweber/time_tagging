@@ -3,6 +3,7 @@ import pandas
 import re
 import csv
 
+
 def clean_and_split(sentence):
     """
     Take a sentence of voiceover. Clean up artefacts, special characters, comments etc. Split into lowercase words. Return.
@@ -16,9 +17,9 @@ def clean_and_split(sentence):
     crosstalk_pattern = '\(.*?\)|\".*?\"'
     # crosstalk_findings = re.findall(crosstalk_pattern, sentence)
     # print("Crosstalk: "+str(crosstalk_findings))
-    sentence = re.sub(crosstalk_pattern, " ",  sentence)
+    sentence = re.sub(crosstalk_pattern, " ", sentence)
     # splits into words, drops all special characters
-    words = re.sub("[^\w]", " ",  sentence).split()
+    words = re.sub("[^\w]", " ", sentence).split()
     # filter out all "s" and "ss" tokens. these are special voiceover items and not enunciated
     words = filter(lambda word: word is not "s" and word is not "ss", words)
     # Lowercase all words, because we want "Hello" to be the same as "hello"
@@ -42,8 +43,8 @@ def gen_time_tag_dicts(words, t_start, t_end, method="constant"):
     if method == "constant":
         # idea: each word in a sentence uses the same amount of time, approximately
         for i, word in enumerate(words):
-            words_dicts.append({"t_start": t_start+i*word_time,
-                                "t_end": t_start+(i+1)*word_time,
+            words_dicts.append({"t_start": t_start + i * word_time,
+                                "t_end": t_start + (i + 1) * word_time,
                                 "text": word})
     elif method == "weighted":
         # idea: each word word gets assigned a weight, determining the share of time it gets
@@ -55,12 +56,13 @@ def gen_time_tag_dicts(words, t_start, t_end, method="constant"):
         offset = t_start
         for i, word in enumerate(words):
             words_dicts.append({"t_start": offset,
-                                "t_end": offset+time_fractions[i],
+                                "t_end": offset + time_fractions[i],
                                 "text": word})
             offset += time_fractions[i]
     else:
         raise ValueError("unsupported value for the 'method' argument")
     return words_dicts
+
 
 def time_tag_to_srt_time(seconds):
     """
@@ -101,16 +103,27 @@ def word_list_to_srt(tagged_words):
         out += "\n\n"
     return out
 
+
 if __name__ == "__main__":
     ################################################################
     # setup
     ################################################################
     sentence_sources = ["narration", "dialogue"]
-    sentences_path = {"narration": os.path.join(".", "..", "german_audio_description.csv"),
-                  "dialogue": ""}
+    sentences_path = {"narration": os.path.join("..", "transcriptions", "german_audio_description.csv"),
+                      "dialogue": os.path.join("..", "transcriptions", "german_dialog_20150211.csv")}
     narration = pandas.read_csv(filepath_or_buffer=sentences_path["narration"],
-                            header=None,
-                            names=["t_start", "t_end", "text"])
+                                header=None,
+                                names=["t_start", "t_end", "text"])
+
+    dialogue = pandas.read_csv(filepath_or_buffer=sentences_path["dialogue"],
+                               header=None,
+                               names=["t_start", "t_end", "person", "text"],
+                               skiprows=1,
+                               encoding="iso8859_15")
+    del dialogue["person"]
+    # time stamps in dialogue data are milliseconds, convert to seconds to have one unit across data
+    for ms_time_field in ["t_start", "t_end"]:
+        dialogue[ms_time_field] /= 1000
 
     ################################################################
     # create tagged word list
@@ -123,7 +136,7 @@ if __name__ == "__main__":
         tagged_words.extend(words_dicts)
 
     # for word in tagged_words:
-    #     print("{}, {}, {}".format(word["t_start"], word["t_end"], word["text"]))
+    # print("{}, {}, {}".format(word["t_start"], word["t_end"], word["text"]))
 
     ################################################################
     # write tagged word list to CSV
