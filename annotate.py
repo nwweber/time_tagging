@@ -118,6 +118,8 @@ if __name__ == "__main__":
     ################################################################
     # setup
     ################################################################
+
+
     sentence_sources = ["narration", "dialogue"]
     sentences_path = {"narration": os.path.join("..", "transcriptions", "german_audio_description.csv"),
                       "dialogue": os.path.join("..", "transcriptions", "german_dialog_20150211.csv")}
