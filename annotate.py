@@ -104,6 +104,16 @@ def word_list_to_srt(tagged_words):
     return out
 
 
+def time_tag2seconds(time_tag):
+    """
+    Takes a time tag in the format hr:min:sec.mil and transforms it into seconds
+    :param time_tag:
+    :return:
+    """
+    hr, min, sec_mil = time_tag.split(":")
+    sec, mil = sec_mil.split(".")
+    return 3600*hr+60*min+sec
+
 if __name__ == "__main__":
     ################################################################
     # setup
@@ -128,14 +138,40 @@ if __name__ == "__main__":
     # there are some entries in the dialogue transcriptions that have start/end times and a speaker but no
     # actual dialogue string. let's drop them here to prevent problems down the pipeline.
     dialogue = dialogue.dropna()
-
     # time stamps in dialogue data are milliseconds, convert to seconds to have one unit across data
     for ms_time_field in ["t_start", "t_end"]:
         dialogue[ms_time_field] /= 1000
 
+    # rest of the pipeline assumes all transcriptions to be in one, sorted, data structure
     all_transcriptions = pandas.concat([narration, dialogue])
     all_transcriptions = all_transcriptions.sort(columns="t_start")
 
+    # now we wish to emulate the procedure used to generate the 8 movie sections. this is:
+    # 1: split into 7 non-consecutive parts, which cuts the movie down to ~2 hours
+    # 2: concat these 7 parts, then split them into the 8 sections
+
+    # Now: splitting into 7 parts
+    # This is what the authors have to say about these parts:
+    # Part Start time End time Start frame End frame
+    # 0 00:00:00.00 00:21:32.12 0 32312
+    # 1 00:24:13.24 00:38:31.23 36349 57798
+    # 2 00:38:58.20 00:57:19.22 58470 85997
+    # 3 00:59:31.17 01:18:14.00 89293 117351
+    # 4 01:20:24.16 01:34:18.06 120616 141457
+    # 5 01:37:14.19 01:41:30.19 145869 152269
+    # 6 01:42:49.19 02:09:51.17 154244 194792
+    # Table 1. Parts of the original “Forrest Gump” movie that comprise the actual stimulus. These seven
+    # parts are concatenated and then split again into eight segments – one for each fMRI recording run.
+    # Timestamps are given in HH:MM:SS.FRAME format, and refer to the 2002 DVD release (PAL-video,
+    # 25 frames per second, DE103519SV).
+    # (Hanke et al. 2014
+    # "A high-resolution 7-Tesla fMRI dataset from complex natural stimulation with an audio movie", Nature)
+
+    # We use seconds as time-measurements throughout
+    split_seconds = {}
+    for location in ["starts", "ends"]:
+        with open(os.path.join("..", "transcriptions", "split_"+location+".txt"), "r") as f:
+            split_seconds[location] = [time_tag2seconds(line.strip()) for line in f.readlines()]
 
     ################################################################
     # create tagged word list
@@ -146,7 +182,6 @@ if __name__ == "__main__":
         words = clean_and_split(row["text"])
         words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"], method="weighted")
         tagged_words.extend(words_dicts)
-
     # for word in tagged_words:
     # print("{}, {}, {}".format(word["t_start"], word["t_end"], word["text"]))
 
