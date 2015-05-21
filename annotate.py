@@ -199,25 +199,33 @@ def load_transcriptions():
 
     return transcriptions_out
 
+
+def create_tagged_word_list(transcriptions):
+    """
+    Take blockwise (e.g. sentene) transcriptions, each block having t_start and t_end, and turn it into
+    a list of words, each word having t_start and t_end
+    :param transcriptions:
+    :return:
+    """
+    tagged_words = []
+    for i in range(transcriptions.shape[0]):
+        row = transcriptions.ix[i]
+        words = clean_and_split(row["text"])
+        words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"], method="weighted")
+        tagged_words.extend(words_dicts)
+    return tagged_words
+
+
 if __name__ == "__main__":
     ################################################################
     # setup
     ################################################################
-
-
-    load_transcriptions()
+    transcriptions = load_transcriptions()
 
     ################################################################
     # create tagged word list
     ################################################################
-    tagged_words = []
-    for i in range(narration.shape[0]):
-        row = narration.ix[i]
-        words = clean_and_split(row["text"])
-        words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"], method="weighted")
-        tagged_words.extend(words_dicts)
-    # for word in tagged_words:
-    # print("{}, {}, {}".format(word["t_start"], word["t_end"], word["text"]))
+    tagged_words = create_tagged_word_list(transcriptions)
 
     ################################################################
     # write tagged word list to CSV
