@@ -119,8 +119,8 @@ def load_transcriptions():
     """
     Gather all transcriptions for voice-over and narrations. Return them in one pandas DataFrame, sorted
     by t_start. If necessary, do pre-processing that differs between voice-over and narration.
-    :return: pandas dataframe, columns: t_start, t_end, text, each row one block of transcriptions. times in seconds,
-     referring to the edited, shortened movie
+    :return: list of pandas dataframes, columns: t_start, t_end, text, each row one block of transcriptions. times in
+    seconds, referring to time within current section (1-8). one dataframe per section
     """
     sentence_sources = ["narration", "dialogue"]
     sentences_path = {"narration": os.path.join("..", "transcriptions", "german_audio_description.csv"),
@@ -183,6 +183,10 @@ def load_transcriptions():
             (all_transcriptions["t_start"] >= split_start) & (all_transcriptions["t_end"] <= split_end)]
         splits.append(split_transcriptions)
 
+    #############################################################################################
+    # WATCH OUT: Time-shifting might be wrong. Maybe times already refer to edited-movie-time
+    # Then only normalizing per section might be necessary
+    ##############################################################################################
     # we want new time-tags to be in edited-movie-time (i.e. going from 0 to 2 hrs)
     # so we have to shift later time tags forward to cover the 'holes' in-between the splits
     # the expression below lines up all split-ends with the start of the next split. last end point is omitted
@@ -193,11 +197,7 @@ def load_transcriptions():
             split["t_start"] += offset
             split["t_end"] += offset
 
-    transcriptions_out = splits[0]
-    for split in splits[1:]:
-        transcriptions_out = pandas.concat([transcriptions_out, split])
-
-    return transcriptions_out
+    return splits
 
 
 def create_tagged_word_list(transcriptions):
@@ -220,12 +220,12 @@ if __name__ == "__main__":
     ################################################################
     # setup
     ################################################################
-    transcriptions = load_transcriptions()
+    transcriptions_per_section = load_transcriptions()
 
     ################################################################
     # create tagged word list
     ################################################################
-    tagged_words = create_tagged_word_list(transcriptions)
+    tagged_words_per_section = [create_tagged_word_list(transcriptions) for transcriptions in transcriptions_per_section]
 
     ################################################################
     # write tagged word list to CSV
