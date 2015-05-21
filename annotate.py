@@ -111,22 +111,31 @@ if __name__ == "__main__":
     sentence_sources = ["narration", "dialogue"]
     sentences_path = {"narration": os.path.join("..", "transcriptions", "german_audio_description.csv"),
                       "dialogue": os.path.join("..", "transcriptions", "german_dialog_20150211.csv")}
+    # narration read-in. it's pretty much in the right form already, except for textual pre-processing
+    # which happens later in the pipeline
     narration = pandas.read_csv(filepath_or_buffer=sentences_path["narration"],
                                 header=None,
                                 names=["t_start", "t_end", "text"])
 
+    # dialogue read-in + some pre-processing
     dialogue = pandas.read_csv(filepath_or_buffer=sentences_path["dialogue"],
                                header=None,
                                names=["t_start", "t_end", "person", "text"],
                                skiprows=1,
                                encoding="iso8859_15")
+    # 'person' column not needed for rest of pipeline
     del dialogue["person"]
+    # there are some entries in the dialogue transcriptions that have start/end times and a speaker but no
+    # actual dialogue string. let's drop them here to prevent problems down the pipeline.
+    dialogue = dialogue.dropna()
+
     # time stamps in dialogue data are milliseconds, convert to seconds to have one unit across data
     for ms_time_field in ["t_start", "t_end"]:
         dialogue[ms_time_field] /= 1000
 
     all_transcriptions = pandas.concat([narration, dialogue])
     all_transcriptions = all_transcriptions.sort(columns="t_start")
+
 
     ################################################################
     # create tagged word list
