@@ -114,12 +114,14 @@ def time_tag2seconds(time_tag):
     sec, mil = sec_mil.split(".")
     return 3600*int(hr)+60*int(min)+int(sec)
 
-if __name__ == "__main__":
-    ################################################################
-    # setup
-    ################################################################
 
-
+def load_transcriptions():
+    """
+    Gather all transcriptions for voice-over and narrations. Return them in one pandas DataFrame, sorted
+    by t_start. If necessary, do pre-processing that differs between voice-over and narration.
+    :return: pandas dataframe, columns: t_start, t_end, text, each row one block of transcriptions. times in seconds,
+     referring to the edited, shortened movie
+    """
     sentence_sources = ["narration", "dialogue"]
     sentences_path = {"narration": os.path.join("..", "transcriptions", "german_audio_description.csv"),
                       "dialogue": os.path.join("..", "transcriptions", "german_dialog_20150211.csv")}
@@ -128,7 +130,6 @@ if __name__ == "__main__":
     narration = pandas.read_csv(filepath_or_buffer=sentences_path["narration"],
                                 header=None,
                                 names=["t_start", "t_end", "text"])
-
     # dialogue read-in + some pre-processing
     dialogue = pandas.read_csv(filepath_or_buffer=sentences_path["dialogue"],
                                header=None,
@@ -147,11 +148,9 @@ if __name__ == "__main__":
     # rest of the pipeline assumes all transcriptions to be in one, sorted, data structure
     all_transcriptions = pandas.concat([narration, dialogue])
     all_transcriptions = all_transcriptions.sort(columns="t_start")
-
     # now we wish to emulate the procedure used to generate the 8 movie sections. this is:
     # 1: split into 7 non-consecutive parts, which cuts the movie down to ~2 hours
     # 2: concat these 7 parts, then split them into the 8 sections
-
     # Now: splitting into 7 parts
     # This is what the authors have to say about these parts:
     # Part Start time End time Start frame End frame
@@ -168,21 +167,20 @@ if __name__ == "__main__":
     # 25 frames per second, DE103519SV).
     # (Hanke et al. 2014
     # "A high-resolution 7-Tesla fMRI dataset from complex natural stimulation with an audio movie", Nature)
-
     # I have recorded the 'start time' and 'end time' columns in 'split_starts.txt' and 'split_ends.txt'
     # respectively.
-
     # We use seconds as time-measurements throughout
     # Read in starting and ending positions of splits, convert them into seconds
     split_seconds = {}
     for location in ["starts", "ends"]:
-        with open(os.path.join("..", "transcriptions", "split_"+location+".txt"), "r") as f:
+        with open(os.path.join("..", "transcriptions", "split_" + location + ".txt"), "r") as f:
             split_seconds[location] = [time_tag2seconds(line.strip()) for line in f.readlines()]
 
     # Now to the actual splitting
     splits = []
     for i, (split_start, split_end) in enumerate(zip(split_seconds["starts"], split_seconds["ends"])):
-        split_transcriptions = all_transcriptions[(all_transcriptions["t_start"] >= split_start) & (all_transcriptions["t_end"] <= split_end)]
+        split_transcriptions = all_transcriptions[
+            (all_transcriptions["t_start"] >= split_start) & (all_transcriptions["t_end"] <= split_end)]
         splits.append(split_transcriptions)
 
     # we want new time-tags to be in edited-movie-time (i.e. going from 0 to 2 hrs)
@@ -191,10 +189,23 @@ if __name__ == "__main__":
     for i, (first_end, next_start) in enumerate(zip(split_seconds["ends"], split_seconds["starts"][1:])):
         offset = first_end - next_start
         # all splits with index > i have to be time-shifted
-
-        for split in splits[i+1:]:
+        for split in splits[i + 1:]:
             split["t_start"] += offset
             split["t_end"] += offset
+
+    transcriptions_out = splits[0]
+    for split in splits[1:]:
+        transcriptions_out = pandas.concat([transcriptions_out, split])
+
+    return transcriptions_out
+
+if __name__ == "__main__":
+    ################################################################
+    # setup
+    ################################################################
+
+
+    load_transcriptions()
 
     ################################################################
     # create tagged word list
