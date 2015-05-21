@@ -112,7 +112,7 @@ def time_tag2seconds(time_tag):
     """
     hr, min, sec_mil = time_tag.split(":")
     sec, mil = sec_mil.split(".")
-    return 3600*hr+60*min+sec
+    return 3600*int(hr)+60*int(min)+int(sec)
 
 if __name__ == "__main__":
     ################################################################
@@ -132,7 +132,7 @@ if __name__ == "__main__":
                                header=None,
                                names=["t_start", "t_end", "person", "text"],
                                skiprows=1,
-                               encoding="iso8859_15")
+                               encoding="utf-8")
     # 'person' column not needed for rest of pipeline
     del dialogue["person"]
     # there are some entries in the dialogue transcriptions that have start/end times and a speaker but no
@@ -167,11 +167,32 @@ if __name__ == "__main__":
     # (Hanke et al. 2014
     # "A high-resolution 7-Tesla fMRI dataset from complex natural stimulation with an audio movie", Nature)
 
+    # I have recorded the 'start time' and 'end time' columns in 'split_starts.txt' and 'split_ends.txt'
+    # respectively.
+
     # We use seconds as time-measurements throughout
+    # Read in starting and ending positions of splits, convert them into seconds
     split_seconds = {}
     for location in ["starts", "ends"]:
         with open(os.path.join("..", "transcriptions", "split_"+location+".txt"), "r") as f:
             split_seconds[location] = [time_tag2seconds(line.strip()) for line in f.readlines()]
+
+    # Now to the actual splitting
+    splits = []
+    for i, (split_start, split_end) in enumerate(zip(split_seconds["starts"], split_seconds["ends"])):
+        split_transcriptions = all_transcriptions[(all_transcriptions["t_start"] >= split_start) & (all_transcriptions["t_end"] <= split_end)]
+        splits.append(split_transcriptions)
+
+    # we want new time-tags to be in edited-movie-time (i.e. going from 0 to 2 hrs)
+    # so we have to shift later time tags forward to cover the 'holes' in-between the splits
+    # the expression below lines up all split-ends with the start of the next split. last end point is omitted
+    for i, (first_end, next_start) in enumerate(zip(split_seconds["ends"], split_seconds["starts"][1:])):
+        offset = first_end - next_start
+        # all splits with index > i have to be time-shifted
+
+        for split in splits[i+1:]:
+            split["t_start"] += offset
+            split["t_end"] += offset
 
     ################################################################
     # create tagged word list
