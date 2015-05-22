@@ -29,12 +29,13 @@ def clean_and_split(sentence):
     return words
 
 
-def gen_time_tag_dicts(words, t_start, t_end, method="constant"):
+def gen_time_tag_dicts(words, t_start, t_end, method="constant", audio_path=""):
     """
     Given the words in sentence, the start/end times of that sentence, generate time-tagged words
     :param words: a list of words
     :param t_start: start time, absolute
     :param t_end: end time, absolute
+    :param audio_path: audio track for this transcription
     :return: a list of dicts, each dict contains: the word, its t_start, its t_end
     """
     words_dicts = []
@@ -115,14 +116,7 @@ def time_tag2seconds(time_tag):
     return 3600*int(hr)+60*int(min)+int(sec)
 
 
-def load_transcriptions():
-    """
-    Gather all transcriptions for voice-over and narrations. Return them in one pandas DataFrame, sorted
-    by t_start. If necessary, do pre-processing that differs between voice-over and narration.
-    :return: list of pandas dataframes, columns: t_start, t_end, text, each row one block of transcriptions. times in
-    seconds, referring to time within current section (1-8). one dataframe per section
-    """
-    sentence_sources = ["narration", "dialogue"]
+def load_and_normalize_transcriptions():
     sentences_path = {"narration": os.path.join("..", "transcriptions", "german_audio_description.csv"),
                       "dialogue": os.path.join("..", "transcriptions", "german_dialog_20150211.csv")}
     # narration read-in. it's pretty much in the right form already, except for textual pre-processing
@@ -144,65 +138,35 @@ def load_transcriptions():
     # time stamps in dialogue data are milliseconds, convert to seconds to have one unit across data
     for ms_time_field in ["t_start", "t_end"]:
         dialogue[ms_time_field] /= 1000
-
-    # rest of the pipeline assumes all transcriptions to be in one, sorted, data structure
     all_transcriptions = pandas.concat([narration, dialogue])
     all_transcriptions = all_transcriptions.sort(columns="t_start")
-    # now we wish to emulate the procedure used to generate the 8 movie sections. this is:
-    # 1: split into 7 non-consecutive parts, which cuts the movie down to ~2 hours
-    # 2: concat these 7 parts, then split them into the 8 sections
-    # Now: splitting into 7 parts
-    # This is what the authors have to say about these parts:
-    # Part Start time End time Start frame End frame
-    # 0 00:00:00.00 00:21:32.12 0 32312
-    # 1 00:24:13.24 00:38:31.23 36349 57798
-    # 2 00:38:58.20 00:57:19.22 58470 85997
-    # 3 00:59:31.17 01:18:14.00 89293 117351
-    # 4 01:20:24.16 01:34:18.06 120616 141457
-    # 5 01:37:14.19 01:41:30.19 145869 152269
-    # 6 01:42:49.19 02:09:51.17 154244 194792
-    # Table 1. Parts of the original “Forrest Gump” movie that comprise the actual stimulus. These seven
-    # parts are concatenated and then split again into eight segments – one for each fMRI recording run.
-    # Timestamps are given in HH:MM:SS.FRAME format, and refer to the 2002 DVD release (PAL-video,
-    # 25 frames per second, DE103519SV).
-    # (Hanke et al. 2014
-    # "A high-resolution 7-Tesla fMRI dataset from complex natural stimulation with an audio movie", Nature)
-    # I have recorded the 'start time' and 'end time' columns in 'split_starts.txt' and 'split_ends.txt'
-    # respectively.
-    # We use seconds as time-measurements throughout
-    # Read in starting and ending positions of splits, convert them into seconds
-    split_seconds = {}
-    for location in ["starts", "ends"]:
-        with open(os.path.join("..", "transcriptions", "split_" + location + ".txt"), "r") as f:
-            split_seconds[location] = [time_tag2seconds(line.strip()) for line in f.readlines()]
-
-    # Now to the actual splitting
-    splits = []
-    for i, (split_start, split_end) in enumerate(zip(split_seconds["starts"], split_seconds["ends"])):
-        split_transcriptions = all_transcriptions[
-            (all_transcriptions["t_start"] >= split_start) & (all_transcriptions["t_end"] <= split_end)]
-        splits.append(split_transcriptions)
-
-    #############################################################################################
-    # WATCH OUT: Time-shifting might be wrong. Maybe times already refer to edited-movie-time
-    # Then only normalizing per section might be necessary
-    ##############################################################################################
-    # we want new time-tags to be in edited-movie-time (i.e. going from 0 to 2 hrs)
-    # so we have to shift later time tags forward to cover the 'holes' in-between the splits
-    # the expression below lines up all split-ends with the start of the next split. last end point is omitted
-    for i, (first_end, next_start) in enumerate(zip(split_seconds["ends"], split_seconds["starts"][1:])):
-        offset = first_end - next_start
-        # all splits with index > i have to be time-shifted
-        for split in splits[i + 1:]:
-            split["t_start"] += offset
-            split["t_end"] += offset
-
-    return splits
+    return all_transcriptions
 
 
-def create_tagged_word_list(transcriptions):
+def cut_into_sections(all_transcriptions):
+    pass
+
+
+def load_transcriptions_and_paths():
     """
-    Take blockwise (e.g. sentene) transcriptions, each block having t_start and t_end, and turn it into
+    Gather all transcriptions for voice-over and narrations. Return them in one pandas DataFrame, sorted
+    by t_start. If necessary, do pre-processing that differs between voice-over and narration.
+    :return: list of tuples. each tuple has: pandas dataframes, columns: t_start, t_end, text, each row one block of transcriptions. times in
+    seconds, referring to time within current section (1-8). one dataframe per section. every tuple also contains the path to an audio file correpsonding
+    to these transcriptions
+    """
+    all_transcriptions = load_and_normalize_transcriptions()
+
+    sections = cut_into_sections(all_transcriptions)
+
+    audio_paths = [os.path.join("..", "fgad", "fg_ad_seg"+str(i)) for i in range(8)]
+
+    return zip(sections, audio_paths)
+
+
+def create_tagged_word_list(transcriptions, audio_path, method="weighted"):
+    """
+    Take blockwise (e.g. sentence) transcriptions, each block having t_start and t_end, and turn it into
     a list of words, each word having t_start and t_end
     :param transcriptions:
     :return:
@@ -211,34 +175,39 @@ def create_tagged_word_list(transcriptions):
     for i in range(transcriptions.shape[0]):
         row = transcriptions.ix[i]
         words = clean_and_split(row["text"])
-        words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"], method="weighted")
+        words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"], method=method, audio_path=audio_path)
         tagged_words.extend(words_dicts)
     return tagged_words
 
 
-if __name__ == "__main__":
-    ################################################################
-    # setup
-    ################################################################
-    transcriptions_per_section = load_transcriptions()
-
-    ################################################################
-    # create tagged word list
-    ################################################################
-    tagged_words_per_section = [create_tagged_word_list(transcriptions) for transcriptions in transcriptions_per_section]
-
-    ################################################################
-    # write tagged word list to CSV
-    ################################################################
-    fout = "words_tagged.csv"
+def write_to_csv(section, csv_path):
+    fout = csv_path
     with open(fout, "w") as fhandle:
         writer = csv.writer(fhandle, dialect="excel")
-        for word in tagged_words:
+        for word in section:
             writer.writerow([word["t_start"], word["t_end"], word["text"]])
 
-    ################################################################
-    # write tagged word list to .srt for inspection
-    ################################################################
-    with open(os.path.join("..", "fgad", "fg_ad_seg0.mkv.srt"), "w") as fout:
-        fout.write(word_list_to_srt(tagged_words))
-        print(word_list_to_srt(tagged_words))
+
+def write_to_srt(section, srt_path):
+    with open(srt_path, "w") as fout:
+        fout.write(word_list_to_srt(section))
+
+def write_to_files(section, csv_path, srt_path):
+    """
+    Take a a list of time-tagged words. Write it to CSV and to SRT.
+    :param section:
+    :param audio_path:
+    :return:
+    """
+    write_to_csv(section, csv_path)
+    write_to_srt(section, srt_path)
+
+
+if __name__ == "__main__":
+    section_audio_path_pairs = load_transcriptions_and_paths()
+    for i, (section, audio_path) in enumerate(section_audio_path_pairs):
+        annotated_words = create_tagged_word_list(section, audio_path, method="weighted")
+        fname = "fg_ad_seg" + str(i)
+        csv_path = os.path.join("..", "aligned_words", fname+".csv")
+        srt_path = os.path.join("..", "fgad", fname+".srt")
+        write_to_files(section, csv_path, srt_path)
