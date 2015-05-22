@@ -148,6 +148,15 @@ def cut_into_sections_and_normalize_times(all_transcriptions):
     :param all_transcriptions: One big pandas Dataframe with all transcriptions, having fields t_start, t_end, text
     :return: a list of 8 smaller data frames, having the same fields, with t_start and t_end normalized within this section
     """
+    # These are the lenghts of the audio segments 0 - 7:
+    # 00:15:03.04
+    # 00:14:43.08
+    # 00:14:37.08
+    # 00:16:17.08
+    # 00:15:25.08
+    # 00:14:39.09
+    # 00:18:07.08
+    # 00:11:14.44
     raise NotImplementedError("Build me")
     return sections
 
