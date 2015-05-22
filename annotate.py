@@ -144,7 +144,12 @@ def load_and_normalize_transcriptions():
 
 
 def cut_into_sections(all_transcriptions):
-    pass
+    """
+    :param all_transcriptions: One big pandas Dataframe with all transcriptions, having fields t_start, t_end, text
+    :return: a list of 8 smaller data frames, having the same fields
+    """
+    raise NotImplementedError("Build me")
+    return sections
 
 
 def load_transcriptions_and_paths():
