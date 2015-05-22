@@ -143,10 +143,10 @@ def load_and_normalize_transcriptions():
     return all_transcriptions
 
 
-def cut_into_sections(all_transcriptions):
+def cut_into_sections_and_normalize_times(all_transcriptions):
     """
     :param all_transcriptions: One big pandas Dataframe with all transcriptions, having fields t_start, t_end, text
-    :return: a list of 8 smaller data frames, having the same fields
+    :return: a list of 8 smaller data frames, having the same fields, with t_start and t_end normalized within this section
     """
     raise NotImplementedError("Build me")
     return sections
@@ -162,7 +162,7 @@ def load_transcriptions_and_paths():
     """
     all_transcriptions = load_and_normalize_transcriptions()
 
-    sections = cut_into_sections(all_transcriptions)
+    sections = cut_into_sections_and_normalize_times(all_transcriptions)
 
     audio_paths = [os.path.join("..", "fgad", "fg_ad_seg"+str(i)) for i in range(8)]
 
