@@ -113,7 +113,7 @@ def time_tag2seconds(time_tag):
     """
     hr, min, sec_mil = time_tag.split(":")
     sec, mil = sec_mil.split(".")
-    return 3600*int(hr)+60*int(min)+int(sec)
+    return 3600 * int(hr) + 60 * int(min) + int(sec)
 
 
 def load_and_normalize_transcriptions():
@@ -157,7 +157,28 @@ def cut_into_sections_and_normalize_times(all_transcriptions):
     # 00:14:39.09
     # 00:18:07.08
     # 00:11:14.44
-    raise NotImplementedError("Build me")
+    lengths_hms = ["00:15:03.04",
+                   "00:14:43.08",
+                   "00:14:37.08",
+                   "00:16:17.08",
+                   "00:15:25.08",
+                   "00:14:39.09",
+                   "00:18:07.08",
+                   "00:11:14.44"]
+    lengths_secs = map(time_tag2seconds, lengths_hms)
+    boundary = 0
+    boundaries = []
+    for length in lengths_secs:
+        boundary += length
+        boundaries.append(boundary)
+    sections = []
+    for i, boundary in enumerate(boundaries):
+        if i == 0:
+            prev = 0
+        else:
+            prev = boundaries[i - 1]
+        sections.append(
+            all_transcriptions[(all_transcriptions["t_start"] >= prev) & (all_transcriptions["t_end"] <= boundary)])
     return sections
 
 
@@ -173,7 +194,7 @@ def load_transcriptions_and_paths():
 
     sections = cut_into_sections_and_normalize_times(all_transcriptions)
 
-    audio_paths = [os.path.join("..", "fgad", "fg_ad_seg"+str(i)) for i in range(8)]
+    audio_paths = [os.path.join("..", "fgad", "fg_ad_seg" + str(i)) for i in range(8)]
 
     return zip(sections, audio_paths)
 
@@ -206,6 +227,7 @@ def write_to_srt(section, srt_path):
     with open(srt_path, "w") as fout:
         fout.write(word_list_to_srt(section))
 
+
 def write_to_files(section, csv_path, srt_path):
     """
     Take a a list of time-tagged words. Write it to CSV and to SRT.
@@ -222,6 +244,6 @@ if __name__ == "__main__":
     for i, (section, audio_path) in enumerate(section_audio_path_pairs):
         annotated_words = create_tagged_word_list(section, audio_path, method="weighted")
         fname = "fg_ad_seg" + str(i)
-        csv_path = os.path.join("..", "aligned_words", fname+".csv")
-        srt_path = os.path.join("..", "fgad", fname+".srt")
+        csv_path = os.path.join("..", "aligned_words", fname + ".csv")
+        srt_path = os.path.join("..", "fgad", fname + ".srt")
         write_to_files(section, csv_path, srt_path)
