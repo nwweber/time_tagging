@@ -178,7 +178,7 @@ def cut_into_sections_and_normalize_times(all_transcriptions):
         else:
             prev = boundaries[i - 1]
         sections.append(
-            all_transcriptions[(all_transcriptions["t_start"] >= prev) & (all_transcriptions["t_end"] <= boundary)])
+            all_transcriptions[(all_transcriptions["t_start"] >= prev) & (all_transcriptions["t_start"] <= boundary)])
     return sections
 
 
