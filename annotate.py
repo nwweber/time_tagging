@@ -4,29 +4,7 @@ import re
 import csv
 from aligners import UniformAligner
 
-# def clean_and_split(sentence):
-#     """
-#     Take a sentence of voiceover. Clean up artifacts, special characters, comments etc. Split into lowercase words. Return.
-#     :param sentence:
-#     :return: a list of words
-#     """
-#     # filter out (CAPITALIZED WORD) and "CAPITALIZED WORD". These are not enunciated in the voiceover, but rather
-#     # indicate noise/words from the original audio track that get interspersed into the voice
-#     # Might contain special characters
-#     # Update: Capitalization etc are inconsistent. But all follow the pattern "text" and (text). Remove these instead
-#     crosstalk_pattern = '\(.*?\)|\".*?\"'
-#     # crosstalk_findings = re.findall(crosstalk_pattern, sentence)
-#     # print("Crosstalk: "+str(crosstalk_findings))
-#     sentence = re.sub(crosstalk_pattern, " ", sentence)
-#     # splits into words, drops all special characters
-#     words = re.sub("[^\w]", " ", sentence).split()
-#     # filter out all "s" and "ss" tokens. these are special voiceover items and not enunciated
-#     words = filter(lambda word: word is not "s" and word is not "ss", words)
-#     # Lowercase all words, because we want "Hello" to be the same as "hello"
-#     words = map(lambda word: word.lower(), words)
-#     # words might be an iterator at this point, we want a list
-#     words = list(words)
-#     return words
+
 
 
 def time_tag_to_srt_time(seconds):
@@ -84,6 +62,7 @@ def remove_crosstalk(transcription_row):
     """
     Remove crosstalk from narration transcriptions. Crosstalk is annotations of noise or dialogue, which happens at the
     same time as voice-over narration, in the voice-over transcripts.
+    Also remove 's' and 'ss' special strings, which are not enunciated.
     :param transcription_row: pandas data frame, cols: t_start, t_end, text
     :return: data frame, same cols, same text except no crosstalk
     """
@@ -96,6 +75,9 @@ def remove_crosstalk(transcription_row):
     # crosstalk_findings = re.findall(crosstalk_pattern, sentence)
     # print("Crosstalk: "+str(crosstalk_findings))
     sentence = re.sub(crosstalk_pattern, " ", sentence)
+    # filter out ' s ' ' Ss ' etc
+    s_pattern = ' ss* | Ss* '
+    sentence = re.sub(s_pattern, " ", sentence)
     transcription_row["text"] = sentence
     return transcription_row
 

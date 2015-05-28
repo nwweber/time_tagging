@@ -1,9 +1,12 @@
+import re
+
 __author__ = 'niklas'
 """
 Containing different classes implementing the align-interface
 """
 
 import abc
+
 
 class AbstractAligner():
     """
@@ -24,20 +27,20 @@ class AbstractAligner():
         return
 
 
-# def create_tagged_word_list(transcriptions, audio_path, method="weighted"):
-#     """
-#     Take blockwise (e.g. sentence) transcriptions, each block having t_start and t_end, and turn it into
-#     a list of words, each word having t_start and t_end
-#     :param transcriptions:
-#     :return:
-#     """
-#     tagged_words = []
-#     for i in range(transcriptions.shape[0]):
-#         row = transcriptions.ix[i]
-#         words = clean_and_split(row["text"])
-#         words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"], method=method, audio_path=audio_path)
-#         tagged_words.extend(words_dicts)
-#     return tagged_words
+def create_tagged_word_list(transcriptions, audio_path, method="weighted"):
+    """
+    Take blockwise (e.g. sentence) transcriptions, each block having t_start and t_end, and turn it into
+    a list of words, each word having t_start and t_end
+    :param transcriptions:
+    :return:
+    """
+    tagged_words = []
+    for i in range(transcriptions.shape[0]):
+        row = transcriptions.ix[i]
+        words = clean_and_split(row["text"])
+        words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"], method=method, audio_path=audio_path)
+        tagged_words.extend(words_dicts)
+    return tagged_words
 
 def gen_time_tag_dicts(words, t_start, t_end, method="constant", audio_path=""):
     """
@@ -74,14 +77,40 @@ def gen_time_tag_dicts(words, t_start, t_end, method="constant", audio_path=""):
         raise ValueError("unsupported value for the 'method' argument")
     return words_dicts
 
-
-def sentences2words(sentences):
+def clean_and_split(sentence):
     """
-    In: pd series with sentences
-    Out: pd series. same index. each entry: list of words in the corresponding sentence
+    Take a sentence of voiceover. Clean up artifacts, special characters, comments etc. Split into lowercase words. Return.
+    :param sentence:
+    :return: a list of words
     """
-    raise NotImplementedError
+    # filter out (CAPITALIZED WORD) and "CAPITALIZED WORD". These are not enunciated in the voiceover, but rather
+    # indicate noise/words from the original audio track that get interspersed into the voice
+    # Might contain special characters
+    # Update: Capitalization etc are inconsistent. But all follow the pattern "text" and (text). Remove these instead
+    crosstalk_pattern = '\(.*?\)|\".*?\"'
+    # crosstalk_findings = re.findall(crosstalk_pattern, sentence)
+    # print("Crosstalk: "+str(crosstalk_findings))
+    sentence = re.sub(crosstalk_pattern, " ", sentence)
+    # splits into words, drops all special characters
+    words = re.sub("[^\w]", " ", sentence).split()
+    # filter out all "s" and "ss" tokens. these are special voiceover items and not enunciated
+    words = filter(lambda word: word is not "s" and word is not "ss", words)
+    # Lowercase all words, because we want "Hello" to be the same as "hello"
+    words = map(lambda word: word.lower(), words)
+    # words might be an iterator at this point, we want a list
+    words = list(words)
     return words
+
+
+def sentences2words(sentence):
+    """
+    In: String possibly containing multiple sentences and special characters
+    Out: List of words
+    """
+    # splits into words, drops all special characters
+    words = re.sub("[^\w]", " ", sentence).split()
+    return words
+
 
 class UniformAligner(AbstractAligner):
     """
@@ -89,12 +118,14 @@ class UniformAligner(AbstractAligner):
     """
 
     def align(self, transcriptions, audio_path=""):
-        transcriptions["text"] = transcriptions["text"].apply(sentences2words)
-
         words_dicts = []
-        timediff = t_end - t_start
-        word_time = timediff / len(words)
-        if method == "constant":
+        for i in range(transcriptions.shape[0]):
+            row = transcriptions.ix[i:i+1]
+            t_start = row["t_start"]
+            t_end = row["t_end"]
+            words = sentences2words(row["text"])
+            timediff = t_end - t_start
+            word_time = timediff / len(words)
             # idea: each word in a sentence uses the same amount of time, approximately
             for i, word in enumerate(words):
                 words_dicts.append({"t_start": t_start + i * word_time,
