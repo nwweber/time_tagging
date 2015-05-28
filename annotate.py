@@ -4,29 +4,29 @@ import re
 import csv
 
 
-def clean_and_split(sentence):
-    """
-    Take a sentence of voiceover. Clean up artifacts, special characters, comments etc. Split into lowercase words. Return.
-    :param sentence:
-    :return: a list of words
-    """
-    # filter out (CAPITALIZED WORD) and "CAPITALIZED WORD". These are not enunciated in the voiceover, but rather
-    # indicate noise/words from the original audio track that get interspersed into the voice
-    # Might contain special characters
-    # Update: Capitalization etc are inconsistent. But all follow the pattern "text" and (text). Remove these instead
-    crosstalk_pattern = '\(.*?\)|\".*?\"'
-    # crosstalk_findings = re.findall(crosstalk_pattern, sentence)
-    # print("Crosstalk: "+str(crosstalk_findings))
-    sentence = re.sub(crosstalk_pattern, " ", sentence)
-    # splits into words, drops all special characters
-    words = re.sub("[^\w]", " ", sentence).split()
-    # filter out all "s" and "ss" tokens. these are special voiceover items and not enunciated
-    words = filter(lambda word: word is not "s" and word is not "ss", words)
-    # Lowercase all words, because we want "Hello" to be the same as "hello"
-    words = map(lambda word: word.lower(), words)
-    # words might be an iterator at this point, we want a list
-    words = list(words)
-    return words
+# def clean_and_split(sentence):
+#     """
+#     Take a sentence of voiceover. Clean up artifacts, special characters, comments etc. Split into lowercase words. Return.
+#     :param sentence:
+#     :return: a list of words
+#     """
+#     # filter out (CAPITALIZED WORD) and "CAPITALIZED WORD". These are not enunciated in the voiceover, but rather
+#     # indicate noise/words from the original audio track that get interspersed into the voice
+#     # Might contain special characters
+#     # Update: Capitalization etc are inconsistent. But all follow the pattern "text" and (text). Remove these instead
+#     crosstalk_pattern = '\(.*?\)|\".*?\"'
+#     # crosstalk_findings = re.findall(crosstalk_pattern, sentence)
+#     # print("Crosstalk: "+str(crosstalk_findings))
+#     sentence = re.sub(crosstalk_pattern, " ", sentence)
+#     # splits into words, drops all special characters
+#     words = re.sub("[^\w]", " ", sentence).split()
+#     # filter out all "s" and "ss" tokens. these are special voiceover items and not enunciated
+#     words = filter(lambda word: word is not "s" and word is not "ss", words)
+#     # Lowercase all words, because we want "Hello" to be the same as "hello"
+#     words = map(lambda word: word.lower(), words)
+#     # words might be an iterator at this point, we want a list
+#     words = list(words)
+#     return words
 
 
 def gen_time_tag_dicts(words, t_start, t_end, method="constant", audio_path=""):
@@ -116,14 +116,37 @@ def time_tag2seconds(time_tag):
     return 3600 * int(hr) + 60 * int(min) + int(sec)
 
 
+def remove_crosstalk(transcription_row):
+    """
+    Remove crosstalk from narration transcriptions. Crosstalk is annotations of noise or dialogue, which happens at the
+    same time as voice-over narration, in the voice-over transcripts.
+    :param transcription_row: pandas data frame, cols: t_start, t_end, text
+    :return: data frame, same cols, same text except no crosstalk
+    """
+    sentence = transcription_row["text"]
+    # filter out (CAPITALIZED WORD) and "CAPITALIZED WORD". These are not enunciated in the voiceover, but rather
+    # indicate noise/words from the original audio track that get interspersed into the voice
+    # Might contain special characters
+    # Update: Capitalization etc are inconsistent. But all follow the pattern "text" and (text). Remove these instead
+    crosstalk_pattern = '\(.*?\)|\".*?\"'
+    # crosstalk_findings = re.findall(crosstalk_pattern, sentence)
+    # print("Crosstalk: "+str(crosstalk_findings))
+    sentence = re.sub(crosstalk_pattern, " ", sentence)
+    transcription_row["text"] = sentence
+    return transcription_row
+
+
 def load_and_normalize_transcriptions():
     sentences_path = {"narration": os.path.join("..", "transcriptions", "german_audio_description.csv"),
                       "dialogue": os.path.join("..", "transcriptions", "german_dialog_20150211.csv")}
-    # narration read-in. it's pretty much in the right form already, except for textual pre-processing
-    # which happens later in the pipeline
+
+    # narration read-in. it contains some crosstalk (i.e. annotations of noise or of dialogue which happen at the same
+    # time as the narration). we remove this.
     narration = pandas.read_csv(filepath_or_buffer=sentences_path["narration"],
                                 header=None,
                                 names=["t_start", "t_end", "text"])
+    narration = narration.apply(remove_crosstalk, axis=1)
+
     # dialogue read-in + some pre-processing
     dialogue = pandas.read_csv(filepath_or_buffer=sentences_path["dialogue"],
                                header=None,
@@ -138,6 +161,7 @@ def load_and_normalize_transcriptions():
     # time stamps in dialogue data are milliseconds, convert to seconds to have one unit across data
     for ms_time_field in ["t_start", "t_end"]:
         dialogue[ms_time_field] /= 1000
+
     all_transcriptions = pandas.concat([narration, dialogue])
     all_transcriptions = all_transcriptions.sort(columns="t_start")
     return all_transcriptions
@@ -194,20 +218,20 @@ def load_transcriptions_and_paths():
     return zip(sections, audio_paths)
 
 
-def create_tagged_word_list(transcriptions, audio_path, method="weighted"):
-    """
-    Take blockwise (e.g. sentence) transcriptions, each block having t_start and t_end, and turn it into
-    a list of words, each word having t_start and t_end
-    :param transcriptions:
-    :return:
-    """
-    tagged_words = []
-    for i in range(transcriptions.shape[0]):
-        row = transcriptions.ix[i]
-        words = clean_and_split(row["text"])
-        words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"], method=method, audio_path=audio_path)
-        tagged_words.extend(words_dicts)
-    return tagged_words
+# def create_tagged_word_list(transcriptions, audio_path, method="weighted"):
+#     """
+#     Take blockwise (e.g. sentence) transcriptions, each block having t_start and t_end, and turn it into
+#     a list of words, each word having t_start and t_end
+#     :param transcriptions:
+#     :return:
+#     """
+#     tagged_words = []
+#     for i in range(transcriptions.shape[0]):
+#         row = transcriptions.ix[i]
+#         words = clean_and_split(row["text"])
+#         words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"], method=method, audio_path=audio_path)
+#         tagged_words.extend(words_dicts)
+#     return tagged_words
 
 
 def write_to_csv(section, csv_path):
