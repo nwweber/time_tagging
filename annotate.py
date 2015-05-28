@@ -2,7 +2,7 @@ import os
 import pandas
 import re
 import csv
-
+from aligners import UniformAligner
 
 # def clean_and_split(sentence):
 #     """
@@ -218,22 +218,6 @@ def load_transcriptions_and_paths():
     return zip(sections, audio_paths)
 
 
-# def create_tagged_word_list(transcriptions, audio_path, method="weighted"):
-#     """
-#     Take blockwise (e.g. sentence) transcriptions, each block having t_start and t_end, and turn it into
-#     a list of words, each word having t_start and t_end
-#     :param transcriptions:
-#     :return:
-#     """
-#     tagged_words = []
-#     for i in range(transcriptions.shape[0]):
-#         row = transcriptions.ix[i]
-#         words = clean_and_split(row["text"])
-#         words_dicts = gen_time_tag_dicts(words, row["t_start"], row["t_end"], method=method, audio_path=audio_path)
-#         tagged_words.extend(words_dicts)
-#     return tagged_words
-
-
 def write_to_csv(section, csv_path):
     fout = csv_path
     with open(fout, "w") as fhandle:
@@ -260,8 +244,9 @@ def write_to_files(section, csv_path, srt_path):
 
 if __name__ == "__main__":
     section_audio_path_pairs = load_transcriptions_and_paths()
+    aligner = UniformAligner()
     for i, (section, audio_path) in enumerate(section_audio_path_pairs):
-        annotated_words = create_tagged_word_list(section, audio_path, method="weighted")
+        annotated_words = aligner.align(section, audio_path)
         fname = "fg_ad_seg" + str(i)
         csv_path = os.path.join("..", "aligned_words", fname + ".csv")
         srt_path = os.path.join("..", "fgad", fname + ".srt")
