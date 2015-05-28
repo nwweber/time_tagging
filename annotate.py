@@ -196,4 +196,4 @@ if __name__ == "__main__":
         fname = "fg_ad_seg" + str(i)
         csv_path = os.path.join("..", "aligned_words", fname + ".csv")
         srt_path = os.path.join("..", "fgad", fname + ".srt")
-        write_to_files(section, csv_path, srt_path)
+        write_to_files(annotated_words, csv_path, srt_path)

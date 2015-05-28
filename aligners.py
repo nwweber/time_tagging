@@ -109,6 +109,7 @@ def sentences2words(sentence):
     """
     # splits into words, drops all special characters
     words = re.sub("[^\w]", " ", sentence).split()
+    words = list(words)
     return words
 
 
@@ -120,7 +121,7 @@ class UniformAligner(AbstractAligner):
     def align(self, transcriptions, audio_path=""):
         words_dicts = []
         for i in range(transcriptions.shape[0]):
-            row = transcriptions.ix[i:i+1]
+            row = transcriptions.iloc[i]
             t_start = row["t_start"]
             t_end = row["t_end"]
             words = sentences2words(row["text"])
@@ -131,4 +132,7 @@ class UniformAligner(AbstractAligner):
                 words_dicts.append({"t_start": t_start + i * word_time,
                                     "t_end": t_start + (i + 1) * word_time,
                                     "text": word})
+        for dict in words_dicts:
+            dict["text"] = dict["text"].lower()
+        return words_dicts
 
