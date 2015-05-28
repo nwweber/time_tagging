@@ -6,7 +6,7 @@ import csv
 
 def clean_and_split(sentence):
     """
-    Take a sentence of voiceover. Clean up artefacts, special characters, comments etc. Split into lowercase words. Return.
+    Take a sentence of voiceover. Clean up artifacts, special characters, comments etc. Split into lowercase words. Return.
     :param sentence:
     :return: a list of words
     """
@@ -148,15 +148,10 @@ def cut_into_sections_and_normalize_times(all_transcriptions):
     :param all_transcriptions: One big pandas Dataframe with all transcriptions, having fields t_start, t_end, text
     :return: a list of 8 smaller data frames, having the same fields, with t_start and t_end normalized within this section
     """
-    # These are the lenghts of the audio segments 0 - 7:
-    # 00:15:03.04
-    # 00:14:43.08
-    # 00:14:37.08
-    # 00:16:17.08
-    # 00:15:25.08
-    # 00:14:39.09
-    # 00:18:07.08
-    # 00:11:14.44
+    # These are the lenghts of the audio segments 0 - 7, as measured by:
+    # for i in `seq 0 7`; do
+    #    avprobe ../fgad/fg_ad_seg${i}.mkv 2>&1 | grep "Duration" | cut -d "," -f 1 | cut -d " " -f 4
+    # done
     lengths_hms = ["00:15:03.04",
                    "00:14:43.08",
                    "00:14:37.08",
