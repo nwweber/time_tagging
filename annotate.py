@@ -29,42 +29,6 @@ from aligners import UniformAligner
 #     return words
 
 
-def gen_time_tag_dicts(words, t_start, t_end, method="constant", audio_path=""):
-    """
-    Given the words in sentence, the start/end times of that sentence, generate time-tagged words
-    :param words: a list of words
-    :param t_start: start time, absolute
-    :param t_end: end time, absolute
-    :param audio_path: audio track for this transcription
-    :return: a list of dicts, each dict contains: the word, its t_start, its t_end
-    """
-    words_dicts = []
-    timediff = t_end - t_start
-    word_time = timediff / len(words)
-    if method == "constant":
-        # idea: each word in a sentence uses the same amount of time, approximately
-        for i, word in enumerate(words):
-            words_dicts.append({"t_start": t_start + i * word_time,
-                                "t_end": t_start + (i + 1) * word_time,
-                                "text": word})
-    elif method == "weighted":
-        # idea: each word word gets assigned a weight, determining the share of time it gets
-        # here the weight is simply the number of characters
-        weights = [len(word) for word in words]
-        total = sum(weights)
-        weight_fractions = [weight / total for weight in weights]
-        time_fractions = [weight_fraction * timediff for weight_fraction in weight_fractions]
-        offset = t_start
-        for i, word in enumerate(words):
-            words_dicts.append({"t_start": offset,
-                                "t_end": offset + time_fractions[i],
-                                "text": word})
-            offset += time_fractions[i]
-    else:
-        raise ValueError("unsupported value for the 'method' argument")
-    return words_dicts
-
-
 def time_tag_to_srt_time(seconds):
     """
     Take a timestamp in seconds, convert it to the SRT time format
