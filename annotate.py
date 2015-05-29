@@ -143,6 +143,14 @@ def cut_into_sections_and_normalize_times(all_transcriptions):
             prev = boundaries[i - 1]
         sections.append(
             all_transcriptions[(all_transcriptions["t_start"] >= prev) & (all_transcriptions["t_start"] <= boundary)])
+
+    # transforming stimulus-time to section-time
+    # note that the first section is skipped
+    # reason: 1) it already starts at 0 seconds. 2) for the ith section we want to know when it starts
+    # which is the i-1 boundary
+    for boundary, section in zip(boundaries, sections[1:]):
+        section["t_start"] -= boundary
+        section["t_end"] -= boundary
     return sections
 
 
