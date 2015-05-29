@@ -3,6 +3,7 @@ import pandas
 import re
 import csv
 from aligners import UniformAligner
+from aligners import WeightedAligner
 
 
 def time_tag_to_srt_time(seconds):
