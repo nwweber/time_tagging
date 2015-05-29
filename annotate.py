@@ -5,8 +5,6 @@ import csv
 from aligners import UniformAligner
 
 
-
-
 def time_tag_to_srt_time(seconds):
     """
     Take a timestamp in seconds, convert it to the SRT time format
@@ -58,13 +56,13 @@ def time_tag2seconds(time_tag):
     return 3600 * int(hr) + 60 * int(min) + int(sec)
 
 
-def remove_crosstalk(transcription_row):
+def remove_non_narration_strings(transcription_row):
     """
     Remove crosstalk from narration transcriptions. Crosstalk is annotations of noise or dialogue, which happens at the
     same time as voice-over narration, in the voice-over transcripts.
     Also remove 's' and 'ss' special strings, which are not enunciated.
     :param transcription_row: pandas data frame, cols: t_start, t_end, text
-    :return: data frame, same cols, same text except no crosstalk
+    :return: data frame, same cols, same text except no crosstalk and and no ' s '
     """
     sentence = transcription_row["text"]
     # filter out (CAPITALIZED WORD) and "CAPITALIZED WORD". These are not enunciated in the voiceover, but rather
@@ -76,7 +74,7 @@ def remove_crosstalk(transcription_row):
     # print("Crosstalk: "+str(crosstalk_findings))
     sentence = re.sub(crosstalk_pattern, " ", sentence)
     # filter out ' s ' ' Ss ' etc
-    s_pattern = ' ss* | Ss* '
+    s_pattern = ' *ss* | Ss* '
     sentence = re.sub(s_pattern, " ", sentence)
     transcription_row["text"] = sentence
     return transcription_row
@@ -91,7 +89,7 @@ def load_and_normalize_transcriptions():
     narration = pandas.read_csv(filepath_or_buffer=sentences_path["narration"],
                                 header=None,
                                 names=["t_start", "t_end", "text"])
-    narration = narration.apply(remove_crosstalk, axis=1)
+    narration = narration.apply(remove_non_narration_strings, axis=1)
 
     # dialogue read-in + some pre-processing
     dialogue = pandas.read_csv(filepath_or_buffer=sentences_path["dialogue"],
@@ -192,8 +190,9 @@ if __name__ == "__main__":
     section_audio_path_pairs = load_transcriptions_and_paths()
     aligner = UniformAligner()
     for i, (section, audio_path) in enumerate(section_audio_path_pairs):
-        annotated_words = aligner.align(section, audio_path)
         fname = "fg_ad_seg" + str(i)
         csv_path = os.path.join("..", "aligned_words", fname + ".csv")
         srt_path = os.path.join("..", "fgad", fname + ".srt")
+
+        annotated_words = aligner.align(section, audio_path)
         write_to_files(annotated_words, csv_path, srt_path)
