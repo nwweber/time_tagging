@@ -189,7 +189,7 @@ def write_to_files(section, csv_path, srt_path):
 
 if __name__ == "__main__":
     section_audio_path_pairs = load_transcriptions_and_paths()
-    aligner = UniformAligner()
+    aligner = WeightedAligner()
     for i, (section, audio_path) in enumerate(section_audio_path_pairs):
         fname = "fg_ad_seg" + str(i)
         csv_path = os.path.join("..", "aligned_words", fname + ".csv")
