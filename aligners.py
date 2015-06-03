@@ -26,7 +26,8 @@ class AbstractAligner():
         """
         return
 
-    def extract_row_data(self, row):
+    @staticmethod
+    def extract_row_data(row):
         """
         Given a row of transcription data, return the fields and the time difference. Purely for convenience.
         """
@@ -37,32 +38,24 @@ class AbstractAligner():
         return t_start, t_end, timediff, words
 
 
-def sentences2words(sentence):
-    """
-    In: String possibly containing multiple sentences and special characters
-    Out: List of words
-    """
-    # splits into words, drops all special characters
-    words = re.sub("[^\w]", " ", sentence).split()
-    words = list(words)
-    return words
+    @staticmethod
+    def sentences2words(sentence):
+        """
+        In: String possibly containing multiple sentences and special characters
+        Out: List of words
+        """
+        # splits into words, drops all special characters
+        words = re.sub("[^\w]", " ", sentence).split()
+        words = list(words)
+        return words
 
 
-class UniformAligner(AbstractAligner):
-    """
-    Gives equal time to each word in a text block
-    """
+class AbstractRowBasedAligner(AbstractAligner):
+    """Inherit from this if your aligner does things row-by-row"""
 
+    @abc.abstractmethod
     def row2words_dicts(self, row):
-        words_dicts = []
-        t_start, t_end, timediff, words = self.extract_row_data(row)
-        word_time = timediff / len(words)
-        # idea: each word in a sentence uses the same amount of time, approximately
-        for i, word in enumerate(words):
-            words_dicts.append({"t_start": t_start + i * word_time,
-                                "t_end": t_start + (i + 1) * word_time,
-                                "text": word})
-        return words_dicts
+        return
 
     def align(self, transcriptions, audio_path=""):
         words_dicts = []
@@ -73,13 +66,31 @@ class UniformAligner(AbstractAligner):
             word_dict["text"] = word_dict["text"].lower()
         return words_dicts
 
+class UniformAligner(AbstractRowBasedAligner):
+    """
+    Gives equal time to each word in a text block
+    """
 
-class WeightedAligner(AbstractAligner):
+    def row2words_dicts(self, row):
+        print("doing uniform row alignment")
+        words_dicts = []
+        t_start, t_end, timediff, words = self.extract_row_data(row)
+        word_time = timediff / len(words)
+        # idea: each word in a sentence uses the same amount of time, approximately
+        for i, word in enumerate(words):
+            words_dicts.append({"t_start": t_start + i * word_time,
+                                "t_end": t_start + (i + 1) * word_time,
+                                "text": word})
+        return words_dicts
+
+
+class WeightedAligner(AbstractRowBasedAligner):
     """
     Time in a block is divided according to word weight
     """
 
     def row2words_dicts(self, row):
+        print("doing weighted row alignment")
         words_dicts = []
         t_start, t_end, timediff, words = self.extract_row_data(row)
         weights = [len(word) for word in words]
@@ -93,13 +104,4 @@ class WeightedAligner(AbstractAligner):
                                 "text": word})
             offset += time_fractions[i]
             # print("word {}, time fraction: {}".format(word, time_fractions[i]))
-        return words_dicts
-
-    def align(self, transcriptions, audio_path=""):
-        words_dicts = []
-        for i in range(transcriptions.shape[0]):
-            row = transcriptions.iloc[i]
-            words_dicts.extend(self.row2words_dicts(row))
-        for word_dict in words_dicts:
-            word_dict["text"] = word_dict["text"].lower()
         return words_dicts
