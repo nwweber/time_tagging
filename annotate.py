@@ -75,7 +75,10 @@ def remove_non_narration_strings(transcription_row):
     # print("Crosstalk: "+str(crosstalk_findings))
     sentence = re.sub(crosstalk_pattern, " ", sentence)
     # filter out ' s ' ' Ss ' etc
-    s_pattern = ' *ss* | Ss* '
+    s_pattern = r'\b[sS]+\b'
+    s_pattern_findings = re.findall(s_pattern, sentence)
+    if len(s_pattern_findings) > 0:
+        print("S-pattern: "+str(s_pattern_findings))
     sentence = re.sub(s_pattern, " ", sentence)
     transcription_row["text"] = sentence
     return transcription_row
