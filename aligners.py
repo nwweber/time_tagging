@@ -33,10 +33,9 @@ class AbstractAligner():
         """
         t_start = row["t_start"]
         t_end = row["t_end"]
-        words = sentences2words(row["text"])
+        words = AbstractAligner.sentences2words(row["text"])
         timediff = t_end - t_start
         return t_start, t_end, timediff, words
-
 
     @staticmethod
     def sentences2words(sentence):
@@ -65,6 +64,7 @@ class AbstractRowBasedAligner(AbstractAligner):
         for word_dict in words_dicts:
             word_dict["text"] = word_dict["text"].lower()
         return words_dicts
+
 
 class UniformAligner(AbstractRowBasedAligner):
     """

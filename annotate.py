@@ -77,8 +77,8 @@ def remove_non_narration_strings(transcription_row):
     # filter out ' s ' ' Ss ' etc
     s_pattern = r'\b[sS]+\b'
     s_pattern_findings = re.findall(s_pattern, sentence)
-    if len(s_pattern_findings) > 0:
-        print("S-pattern: "+str(s_pattern_findings))
+    # if len(s_pattern_findings) > 0:
+    # print("S-pattern: "+str(s_pattern_findings))
     sentence = re.sub(s_pattern, " ", sentence)
     transcription_row["text"] = sentence
     return transcription_row
@@ -122,7 +122,7 @@ def cut_into_sections_and_normalize_times(all_transcriptions):
     """
     # These are the lenghts of the audio segments 0 - 7, as measured by:
     # for i in `seq 0 7`; do
-    #    avprobe ../fgad/fg_ad_seg${i}.mkv 2>&1 | grep "Duration" | cut -d "," -f 1 | cut -d " " -f 4
+    # avprobe ../fgad/fg_ad_seg${i}.mkv 2>&1 | grep "Duration" | cut -d "," -f 1 | cut -d " " -f 4
     # done
     lengths_hms = ["00:15:03.04",
                    "00:14:43.08",
@@ -133,27 +133,34 @@ def cut_into_sections_and_normalize_times(all_transcriptions):
                    "00:18:07.08",
                    "00:11:14.44"]
     lengths_secs = map(time_tag2seconds, lengths_hms)
-    boundary = 0
-    boundaries = []
-    for length in lengths_secs:
-        boundary += length
-        boundaries.append(boundary)
+
+    # These are the starting times for each section in stimulus time in seconds, as measured by aligning all sections
+    # in Audacity in such a way that overlapping parts are only played once
+    section_starts_stimulus = [
+        0,
+        885,
+        1752,
+        2612,
+        3572,
+        4480,
+        5342,
+        6412
+    ]
+
+    # we know when a section starts and how long it is, so we also know when it ends
+    section_ends_stimulus = []
+    for s_start, s_length in zip(section_starts_stimulus, lengths_secs):
+        section_ends_stimulus.append(s_start + s_length)
+
     sections = []
-    for i, boundary in enumerate(boundaries):
-        if i == 0:
-            prev = 0
-        else:
-            prev = boundaries[i - 1]
-        sections.append(
-            all_transcriptions[(all_transcriptions["t_start"] >= prev) & (all_transcriptions["t_start"] <= boundary)])
+    for s_start, s_end in zip(section_starts_stimulus, section_ends_stimulus):
+        sections.append(all_transcriptions[(all_transcriptions["t_start"] >= s_start) &
+                                           (all_transcriptions["t_start"] <= s_end)].copy())
 
     # transforming stimulus-time to section-time
-    # note that the first section is skipped
-    # reason: 1) it already starts at 0 seconds. 2) for the ith section we want to know when it starts
-    # which is the i-1 boundary
-    for boundary, section in zip(boundaries, sections[1:]):
-        section["t_start"] -= boundary
-        section["t_end"] -= boundary
+    for s_start, section in zip(section_starts_stimulus, sections):
+        section["t_start"] -= s_start
+        section["t_end"] -= s_start
     return sections
 
 
