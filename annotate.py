@@ -4,6 +4,7 @@ import re
 import csv
 from aligners import UniformAligner
 from aligners import WeightedAligner
+from os.path import join as ospj
 
 
 def time_tag_to_srt_time(seconds):
@@ -84,9 +85,10 @@ def remove_non_narration_strings(transcription_row):
     return transcription_row
 
 
-def load_and_normalize_transcriptions():
-    sentences_path = {"narration": os.path.join("..", "transcriptions", "german_audio_description.csv"),
-                      "dialogue": os.path.join("..", "transcriptions", "german_dialog_20150211.csv")}
+def load_and_normalize_transcriptions(dirs):
+    transcriptions_dir = ospj(dirs["data_in_dir"], "transcriptions")
+    sentences_path = {"narration": ospj(transcriptions_dir, "german_audio_description.csv"),
+                      "dialogue": ospj(transcriptions_dir, "german_dialog_20150211.csv")}
 
     # narration read-in. it contains some crosstalk (i.e. annotations of noise or of dialogue which happen at the same
     # time as the narration). we remove this.
@@ -164,7 +166,7 @@ def cut_into_sections_and_normalize_times(all_transcriptions):
     return sections
 
 
-def load_transcriptions_and_paths():
+def load_transcriptions_and_paths(dirs):
     """
     Gather all transcriptions for voice-over and narrations. Return them in one pandas DataFrame, sorted
     by t_start. If necessary, do pre-processing that differs between voice-over and narration.
@@ -172,11 +174,11 @@ def load_transcriptions_and_paths():
     seconds, referring to time within current section (1-8). one dataframe per section. every tuple also contains the path to an audio file correpsonding
     to these transcriptions
     """
-    all_transcriptions = load_and_normalize_transcriptions()
+    all_transcriptions = load_and_normalize_transcriptions(dirs)
 
     sections = cut_into_sections_and_normalize_times(all_transcriptions)
 
-    audio_paths = [os.path.join("..", "fgad", "fg_ad_seg" + str(i)) for i in range(8)]
+    audio_paths = [ospj(dirs["data_in_dir"], "fgad", "fg_ad_seg" + str(i)) for i in range(8)]
 
     return zip(sections, audio_paths)
 
@@ -206,12 +208,25 @@ def write_to_files(section, csv_path, srt_path):
 
 
 if __name__ == "__main__":
-    section_audio_path_pairs = load_transcriptions_and_paths()
+    """
+    When calling this file as a stand-alone script we execute the code below.
+    It takes the transcriptions (voiceover + dialogue) and the paths to the audio files and produces, per section,
+    1) a .csv containing each word in the transcription and it's start and end time within this section (so the
+    starting point of a section is always 0 seconds)
+    2) a .srt file containing the same data in a different format. You can use these as subtitles to the .mkv media
+    files in the fgad directory with your favourite video play. Use this to visually and quickyl inspect how good the
+    alignment works
+    """
+    dirs = {}
+    dirs["home_dir"] = ospj("..", "..")
+    dirs["data_dir"] = ospj(dirs["home_dir"], "data")
+    dirs["data_in_dir"], dirs["data_out_dir"] = ospj(dirs["data_dir"], "in"), ospj(dirs["data_dir"], "out")
+    section_audio_path_pairs = load_transcriptions_and_paths(dirs)
     aligner = WeightedAligner()
+    save_dir = ospj(dirs["data_out_dir"], "aligned_words")
     for i, (section, audio_path) in enumerate(section_audio_path_pairs):
         fname = "fg_ad_seg" + str(i)
-        csv_path = os.path.join("..", "aligned_words", fname + ".csv")
-        srt_path = os.path.join("..", "fgad", fname + ".srt")
+        csv_path, srt_path = ospj(save_dir, fname + ".csv"), ospj(save_dir, fname + ".srt")
 
         annotated_words = aligner.align(section, audio_path)
         write_to_files(annotated_words, csv_path, srt_path)

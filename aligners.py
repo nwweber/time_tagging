@@ -2,7 +2,28 @@ import re
 
 __author__ = 'niklas'
 """
-Containing different classes implementing the align-interface
+Containing different classes implementing the align-interface.
+
+Writing your own:
+Recommended method:
+    Make your own class
+    Inherit from AbstractAligner
+    Implement align() method
+    This would look something like this:
+        class MyAlignerWhichDoesCoolStuff(AbstractAligner):
+            def align(self, transcriptions, audio_path=""):
+                [Logic]
+                return words_dicts
+    Then, to use your own aligner:
+        Go into 'annotate.py'
+        Make your aligner available by adding the following to the top of the file:
+            from aligners import MyAlignerWhichDoesCoolStuff
+        In the if __name__ == "__main__" block:
+            Find the "aligner = ..." line
+            Change it to "aligner = MyAlignerWhichDoesCoolStuff()"
+
+However, inheriting from AbstractAligner is not a necessity. As long as your class has an align() class with the
+right signature you are good to go
 """
 
 import abc
@@ -90,7 +111,6 @@ class WeightedAligner(AbstractRowBasedAligner):
     """
 
     def row2words_dicts(self, row):
-        print("doing weighted row alignment")
         words_dicts = []
         t_start, t_end, timediff, words = self.extract_row_data(row)
         weights = [len(word) for word in words]
