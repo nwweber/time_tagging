@@ -10,6 +10,7 @@ from os.path import join as ospj
 
 def parse_timestamp(line):
     # !TODO implement
+    raise NotImplementedError
     return 42, 42
 
 
