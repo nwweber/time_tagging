@@ -15,7 +15,7 @@ Recommended method:
                 [Logic]
                 return words_dicts
     Then, to use your own aligner:
-        Go into 'annotate.py'
+        Go into 'annotate_forrest.py'
         Make your aligner available by adding the following to the top of the file:
             from aligners import MyAlignerWhichDoesCoolStuff
         In the if __name__ == "__main__" block:
