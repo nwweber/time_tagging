@@ -1,6 +1,6 @@
 __author__ = 'niklas'
 import os
-import pandas
+import pandas as pd
 import re
 import csv
 from aligners import UniformAligner
@@ -8,6 +8,7 @@ from aligners import WeightedAligner
 from os.path import join as ospj
 import pprint
 import annotate_forrest
+import aligners
 
 
 def parse_timestamp(line):
@@ -61,9 +62,21 @@ if __name__ == "__main__":
     datadir = ospj("..", "..", "data")
     subdir = ospj(datadir, "in", "sd_subs")
     subpath = ospj(subdir, "sliding_doors_dummy.srt")
-    f = open(subpath, "r", encoding="cp1252")
-    lines = f.readlines()
-    dicts = srtlines2dict(lines)
+    with open(subpath, "r", encoding="cp1252") as f:
+        lines = f.readlines()
+
+    # aligning/time-tagging blocks of text, as grouped by the subtitles
+    line_dicts = srtlines2dict(lines)
     # 1st dict (index 0) just says 'Synchronized by ShooCat', not actual movie dialogue
-    dicts = dicts[1:]
-    pprint.pprint(dicts[:10])
+    line_dicts = line_dicts[1:]
+    # some output for inspection
+    pprint.pprint(line_dicts[:10])
+    pprint.pprint(line_dicts[-1])
+
+    # aligning/time-tagging individual words
+    aligner = aligners.WeightedAligner()
+    word_dicts = aligner.align(pd.DataFrame(line_dicts))
+    # some output
+    pprint.pprint(word_dicts[:10])
+    pprint.pprint(word_dicts[-1])
+    
