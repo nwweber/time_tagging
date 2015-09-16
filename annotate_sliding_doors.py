@@ -11,6 +11,7 @@ from os.path import join as ospj
 import pprint
 import annotate_forrest
 import aligners
+import pickle
 
 
 def parse_timestamp(line):
@@ -81,4 +82,12 @@ if __name__ == "__main__":
     # some output
     pprint.pprint(word_dicts[:10])
     pprint.pprint(word_dicts[-1])
-    
+
+    # save generated data
+    outdir = ospj(datadir, 'out', 'sliding_doors_pickles')
+    line_file = ospj(outdir, 'line_dicts.pickle')
+    word_file = ospj(outdir, 'word_dicts.pickle')
+    with open(line_file, "wb") as f:
+        pickle.dump(line_dicts, f)
+    with open(word_file, "wb") as f:
+        pickle.dump(word_dicts, f)
