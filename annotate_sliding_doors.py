@@ -6,12 +6,13 @@ import csv
 from aligners import UniformAligner
 from aligners import WeightedAligner
 from os.path import join as ospj
+import pprint
 
 
 def parse_timestamp(line):
     # !TODO implement
-    raise NotImplementedError
     return 42, 42
+    raise NotImplementedError
 
 
 def srtlines2dict(lines):
@@ -48,7 +49,13 @@ def srtlines2dict(lines):
     return all_blocks
 
 
-if __name__ == 'main':
+if __name__ == "__main__":
     datadir = ospj("..", "..", "data")
     subdir = ospj(datadir, "in", "sd_subs")
     subpath = ospj(subdir, "sliding_doors_dummy.srt")
+    f = open(subpath, "r", encoding="cp1252")
+    lines = f.readlines()
+    dicts = srtlines2dict(lines)
+    # 1st dict (index 0) just says 'Synchronized by ShooCat', not actual movie dialogue
+    dicts = dicts[1:]
+    pprint.pprint(dicts[:10])
