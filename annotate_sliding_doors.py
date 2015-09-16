@@ -7,12 +7,20 @@ from aligners import UniformAligner
 from aligners import WeightedAligner
 from os.path import join as ospj
 import pprint
+import annotate_forrest
 
 
 def parse_timestamp(line):
-    # !TODO implement
-    return 42, 42
-    raise NotImplementedError
+    '''
+    Takes a line of the form 'hh:mm::ss,mill --> hh:mm:ss,mill', extracts these timestamps and transforms them into
+    seconds
+    :param line:
+    :return: a list with [t_start, t_end] in seconds since movie start
+    '''
+    t_start, t_end = line.split(' --> ')
+    # could have written this with map or something else. but this is more expressive and i'll hopefully
+    # still understand it in a few weeks
+    return annotate_forrest.time_tag2seconds(t_start, ','), annotate_forrest.time_tag2seconds(t_end, ',')
 
 
 def srtlines2dict(lines):

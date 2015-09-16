@@ -47,14 +47,14 @@ def word_list_to_srt(tagged_words):
     return out
 
 
-def time_tag2seconds(time_tag):
+def time_tag2seconds(time_tag, millisecond_separator="."):
     """
     Takes a time tag in the format hr:min:sec.mil and transforms it into seconds
     :param time_tag:
     :return:
     """
     hr, min, sec_mil = time_tag.split(":")
-    sec, mil = sec_mil.split(".")
+    sec, mil = sec_mil.split(millisecond_separator)
     return 3600 * int(hr) + 60 * int(min) + int(sec)
 
 
