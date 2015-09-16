@@ -1,3 +1,5 @@
+#! /usr/bin/python3
+
 __author__ = 'niklas'
 import os
 import pandas as pd
