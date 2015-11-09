@@ -159,7 +159,7 @@ def cut_into_sections_and_normalize_times(all_transcriptions):
     sections = []
     for s_start, s_end in zip(section_starts_stimulus, section_ends_stimulus):
         sections.append(all_transcriptions[(all_transcriptions["t_start"] >= s_start) &
-                                           (all_transcriptions["t_start"] <= s_end)].copy())
+                                           (all_transcriptions["t_end"] <= s_end)].copy())
 
     # transforming stimulus-time to section-time
     for s_start, section in zip(section_starts_stimulus, sections):
