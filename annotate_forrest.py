@@ -226,9 +226,33 @@ if __name__ == "__main__":
     section_audio_path_pairs = load_transcriptions_and_paths(dirs)
     aligner = WeightedAligner()
     save_dir = ospj(dirs["data_out_dir"], "aligned_words")
-    for i, (section, audio_path) in enumerate(section_audio_path_pairs):
-        fname = "fg_ad_seg" + str(i)
+    problematic_pairs = []
+    for section_index, (section, audio_path) in enumerate(section_audio_path_pairs):
+        fname = "fg_ad_seg" + str(section_index)
         csv_path, srt_path = ospj(save_dir, fname + ".csv"), ospj(save_dir, fname + ".srt")
 
         annotated_words = aligner.align(section, audio_path)
+        for word_index in range(len(annotated_words) - 1):
+            next_word_dict = annotated_words[word_index + 1]
+            current_word_dict = annotated_words[word_index]
+            if next_word_dict["t_start"] < current_word_dict["t_start"]:
+                problematic_pairs.append((section_index, next_word_dict, current_word_dict))
         write_to_files(annotated_words, csv_path, srt_path)
+    # below: report sanity violations in something of a table layout
+    print("Sanity violations. Pairs of words for which the successor has an earlier starting time than the predecessor:")
+    print("Total: {}".format(len(problematic_pairs)))
+    print("{:>6} {:>10} {:>4} {:>4}".format("sec-id", "word", "t_start", "t_end"))
+    print("-"*60)
+    for (section_index, next_word_dict, current_word_dict) in problematic_pairs:
+        if section_index != 0:
+            continue
+        print("-"*60)
+        print("{:>6} {:>10} {:>4} {:>4}".format(section_index,
+                                                current_word_dict["text"],
+                                                current_word_dict["t_start"],
+                                                current_word_dict["t_end"]))
+        print("{:>6} {:>10} {:>4} {:>4}".format(section_index,
+                                                next_word_dict["text"],
+                                                next_word_dict["t_start"],
+                                                next_word_dict["t_end"]))
+    print("-"*60)
