@@ -232,6 +232,7 @@ if __name__ == "__main__":
         csv_path, srt_path = ospj(save_dir, fname + ".csv"), ospj(save_dir, fname + ".srt")
 
         annotated_words = aligner.align(section, audio_path)
+        annotated_words = sorted(annotated_words, key=lambda word_dict: word_dict["t_start"])
         for word_index in range(len(annotated_words) - 1):
             next_word_dict = annotated_words[word_index + 1]
             current_word_dict = annotated_words[word_index]
@@ -244,8 +245,6 @@ if __name__ == "__main__":
     print("{:>6} {:>10} {:>4} {:>4}".format("sec-id", "word", "t_start", "t_end"))
     print("-"*60)
     for (section_index, next_word_dict, current_word_dict) in problematic_pairs:
-        if section_index != 0:
-            continue
         print("-"*60)
         print("{:>6} {:>10} {:>4} {:>4}".format(section_index,
                                                 current_word_dict["text"],
