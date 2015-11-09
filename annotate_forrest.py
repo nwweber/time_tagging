@@ -239,19 +239,21 @@ if __name__ == "__main__":
             if next_word_dict["t_start"] < current_word_dict["t_start"]:
                 problematic_pairs.append((section_index, next_word_dict, current_word_dict))
         write_to_files(annotated_words, csv_path, srt_path)
+        # print("End time, section {}: {}".format(section_index, time_tag_to_srt_time(annotated_words[-1]["t_end"])))
     # below: report sanity violations in something of a table layout
-    print("Sanity violations. Pairs of words for which the successor has an earlier starting time than the predecessor:")
-    print("Total: {}".format(len(problematic_pairs)))
-    print("{:>6} {:>10} {:>4} {:>4}".format("sec-id", "word", "t_start", "t_end"))
-    print("-"*60)
-    for (section_index, next_word_dict, current_word_dict) in problematic_pairs:
-        print("-"*60)
-        print("{:>6} {:>10} {:>4} {:>4}".format(section_index,
-                                                current_word_dict["text"],
-                                                current_word_dict["t_start"],
-                                                current_word_dict["t_end"]))
-        print("{:>6} {:>10} {:>4} {:>4}".format(section_index,
-                                                next_word_dict["text"],
-                                                next_word_dict["t_start"],
-                                                next_word_dict["t_end"]))
-    print("-"*60)
+#     print("Sanity violations. Pairs of words for which the successor has an earlier starting time than the predecessor:")
+#     print("Total: {}".format(len(problematic_pairs)))
+#     print("{:>6} {:>10} {:>4} {:>4}".format("sec-id", "word", "t_start", "t_end"))
+#     print("-"*60)
+#     for (section_index, next_word_dict, current_word_dict) in problematic_pairs:
+#         print("-"*60)
+#         print("{:>6} {:>10} {:>4} {:>4}".format(section_index,
+#                                                 current_word_dict["text"],
+#                                                 current_word_dict["t_start"],
+#                                                 current_word_dict["t_end"]))
+#         print("{:>6} {:>10} {:>4} {:>4}".format(section_index,
+#                                                 next_word_dict["text"],
+#                                                 next_word_dict["t_start"],
+#                                                 next_word_dict["t_end"]))
+#     print("-"*60)
+#
